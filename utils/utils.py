@@ -368,6 +368,9 @@ def evaluation(val_dataloader, cfg, model, device, conf_thres = 0.01, nms_thresh
         imgs = imgs.to(device).float() / 255.0
         targets = targets.to(device)       
 
+        if len(targets.shape) != 2:
+            continue
+
         # Extract labels
         labels += targets[:, 1].tolist()
         # Rescale target
