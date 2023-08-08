@@ -9,6 +9,7 @@ from numpy.testing._private.utils import print_assert_equal
 import torch
 from torch import optim
 from torch.utils.data import dataset
+from torch.utils.mobile_optimizer import optimize_for_mobile
 from numpy.core.fromnumeric import shape
 
 from torchsummary import summary
@@ -89,6 +90,9 @@ if __name__ == '__main__':
                                                milestones=cfg["steps"],
                                                gamma=0.1)
 
+    img_size = [cfg["width"], cfg["height"]]
+    img = torch.zeros(batch_size, 3, *img_size).to(device)  # image size(1,3,320,192) iDetection
+
     print('Starting training for %g epochs...' % cfg["epochs"])
 
     batch_num = 0
@@ -145,3 +149,24 @@ if __name__ == '__main__':
 
         # 学习率调整
         scheduler.step()
+
+    # TorchScript export
+    try:
+        print('\nStarting TorchScript export with torch %s...' % torch.__version__)
+        f = "weights/best.torchscript.pt"  # filename
+        ts = torch.jit.trace(model, img, strict=False)
+        ts.save(f)
+        print('TorchScript export success, saved as %s' % f)
+    except Exception as e:
+        print('TorchScript export failure: %s' % e)
+
+    # TorchScript-Lite export
+    try:
+        print('\nStarting TorchScript-Lite export with torch %s...' % torch.__version__)
+        f = "weights/best.torchscript.ptl"  # filename
+        tsl = torch.jit.trace(model, img, strict=False)
+        tsl = optimize_for_mobile(tsl)
+        tsl._save_for_lite_interpreter(f)
+        print('TorchScript-Lite export success, saved as %s' % f)
+    except Exception as e:
+        print('TorchScript-Lite export failure: %s' % e)
